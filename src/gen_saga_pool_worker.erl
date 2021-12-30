@@ -1,7 +1,6 @@
 -module(gen_saga_pool_worker).
 -behaviour(gen_statem).
 
--include("src/butler_server.hrl").
 -include_lib("gen_saga/src/gen_saga.hrl").
 
 %% API
@@ -39,7 +38,7 @@ callback_mode() ->
     handle_event_function.
 
 init([AppName, Partition]) ->
-    ?INFO("Starting Saga Pool Worker App: ~p Partition: ~p", [AppName, Partition]),
+    lager:info("Starting Saga Pool Worker App: ~p Partition: ~p", [AppName, Partition]),
     InitState =
         #state{
             app_name = AppName,
@@ -50,7 +49,7 @@ init([AppName, Partition]) ->
 handle_event(_EventType, {process_saga}, ready, #state{processing_enabled = ProcessingEnabled} = StateData) when
                             ProcessingEnabled =:= false ->
 
-    ?DEBUG("Ignoring Saga Processing since processing is disabled"),
+    lager:debug("Ignoring Saga Processing since processing is disabled"),
     WorkerPollingInterval = application:get_env(gen_saga, worker_polling_interval, 1000),
     {keep_state, StateData,  [{state_timeout,
         WorkerPollingInterval, {process_saga}}]};
@@ -84,19 +83,19 @@ handle_event({call, From}, {set_processing_enabled}, _StateName, StateData) ->
     {keep_state, StateData#state{processing_enabled = true}, [{reply, From, ok}]};
 
 handle_event(EventType, Event, StateName, _StateData) ->
-    ?INFO("Unhandled event: ~p of type: ~p received in state: ~p", [Event, EventType, StateName]),
+    lager:info("Unhandled event: ~p of type: ~p received in state: ~p", [Event, EventType, StateName]),
     keep_state_and_data.
 
 process_saga(SagaId) ->
     try
-        {atomic, _} = ?MNESIA_TRANSACTION(
+        {atomic, _} = mnesia:transaction(
             fun() ->
                 {ok, SelectedSaga} = gen_saga:get_by_id(SagaId),
                 Partition = SelectedSaga#gen_saga_persist.partition,
                 OldRetryCount = SelectedSaga#gen_saga_persist.retry_count,
                 CountUpdatedSaga = SelectedSaga#gen_saga_persist{retry_count = OldRetryCount + 1},
                 mnesia:dirty_write(CountUpdatedSaga),
-                ?DEBUG("Processing Saga: Id: ~p Partition: ~p", [SagaId, Partition]),
+                lager:debug("Processing Saga: Id: ~p Partition: ~p", [SagaId, Partition]),
                 ControllerState = SelectedSaga#gen_saga_persist.controller_state,
                 [M, F, A] = ControllerState#saga_controller_state.saga_state,
                 apply(M, F, A),
@@ -105,7 +104,7 @@ process_saga(SagaId) ->
         )
     catch
         Class:Exception:Stacktrace ->
-            ?ERROR("Exception Occurred while processing Saga - Id: ~p Exception: ~p Stacktrace: ~p",
+            lager:error("Exception Occurred while processing Saga - Id: ~p Exception: ~p Stacktrace: ~p",
                 [SagaId, {Class, Exception}, Stacktrace]),
             erlang:throw({Class, Exception})
     end.

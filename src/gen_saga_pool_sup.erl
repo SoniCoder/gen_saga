@@ -5,8 +5,6 @@
 %% Supervisor callbacks
 -export([init/1, post_init/1]).
 
--include("src/butler_server.hrl").
-
 %% API
 -export([
          start_link/0,
@@ -31,7 +29,7 @@ start_child(WorkerId) ->
             StartResult,
             {ok, something_already_started};
         _ ->
-            ?ERROR("Failure while starting child: ~p", [StartResult]),
+            lager:error("Failure while starting child: ~p", [StartResult]),
             {error, start_failure}
     end.
 
@@ -64,7 +62,7 @@ stop_children(WorkerIdList) ->
                              pos_integer()},
                             [supervisor3:child_spec()]}} | ignore.
 init([]) ->
-    ?INFO("Starting ~p", [?MODULE]),
+    lager:info("Starting ~p", [?MODULE]),
     GenSagaPoolWorker  = {gen_saga_pool_worker, {gen_saga_pool_worker, start_link, []},
                 {permanent, 30}, 5000, worker, [gen_saga_pool_worker]},
     Children = [GenSagaPoolWorker],

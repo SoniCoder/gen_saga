@@ -1,6 +1,5 @@
 -module(gen_saga).
 
--include("src/butler_server.hrl").
 -include("gen_saga.hrl").
 
 -define(MODEL, gen_saga_persist).
@@ -181,7 +180,7 @@ update_saga_status(SagaId, NewStatus) ->
 %% @doc overwrite an existing saga
 -spec create_or_update(integer(), term(), list()) -> term().
 create_or_update(SagaId, SagaRec, Metadata) ->
-    {atomic, Result} = ?MNESIA_TRANSACTION(
+    {atomic, Result} = mnesia:transaction(
         fun() ->
             case baseinfo:create(?MODEL, SagaId, SagaRec, Metadata) of
             {ok, Key} ->
@@ -195,7 +194,7 @@ create_or_update(SagaId, SagaRec, Metadata) ->
 %% @doc fetches an existing saga using its ID
 -spec get_by_id(integer()) -> term().
 get_by_id(SagaId) ->
-    {atomic, Result} = ?MNESIA_TRANSACTION(
+    {atomic, Result} = mnesia:transaction(
         fun() ->
             baseinfo:get_by_id(?MODEL, SagaId)
         end),
@@ -210,7 +209,7 @@ get_status(SagaId) ->
 %% @doc gets all sagas defined as a list
 -spec get_all() -> list().
 get_all() ->
-    {atomic, Result} = ?MNESIA_TRANSACTION(
+    {atomic, Result} = mnesia:transaction(
         fun() ->
             baseinfo:get_all(?MODEL)
         end),

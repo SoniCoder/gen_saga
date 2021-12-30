@@ -1,12 +1,11 @@
 -module(gen_saga_pool_organiser).
 -behaviour(gen_statem).
 
--include("src/butler_server.hrl").
-
 %% API
 -export([
          start_link/0,
          get_all_worker_ids/0,
+         start_workers/0,
          enable_processing/0,
          disable_processing/0
         ]).
@@ -46,6 +45,9 @@ get_all_worker_ids() ->
     DefaultWorkers,
     AppPools).
 
+start_workers() ->
+    gen_statem:cast({global, ?SERVER}, {start_workers}).
+
 disable_processing() ->
     lists:foreach(
         fun(WorkerId) ->
@@ -64,22 +66,23 @@ callback_mode() ->
     handle_event_function.
 
 init([]) ->
+    lager:info("Starting Saga Pool Organiser"),
     Partitions = application:get_env(gen_saga, partitions, 100),
     Nodes = hash_ring:list_to_nodes(lists:seq(0, Partitions - 1)),
     Ring = hash_ring:make(Nodes),
     persistent_term:put(gen_saga_ring, Ring),
+    {ok, ready, #{}}.
 
-    ?INFO("Starting Saga Pool Organiser"),
+handle_event(_EventType, {start_workers}, _StateName, _StateData) ->
+    lager:info("starting gen_saga workers"),
     lists:foreach(
         fun(WorkerId) ->
             gen_saga_pool_sup:start_child(WorkerId)
         end,
-    get_all_worker_ids()),
-
-    {ok, ready, #{}}.
+    get_all_worker_ids());
 
 handle_event(EventType, Event, StateName, _StateData) ->
-    ?INFO("Unhandled event: ~p of type: ~p received in state: ~p", [Event, EventType, StateName]),
+    lager:info("Unhandled event: ~p of type: ~p received in state: ~p", [Event, EventType, StateName]),
     keep_state_and_data.
 
 %% @private
