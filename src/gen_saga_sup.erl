@@ -28,7 +28,11 @@ start_link() ->
 init([]) ->
     GenSagaPoolSup = {gen_saga_pool_sup, {gen_saga_pool_sup, start_link, []},
                     {permanent, 30}, infinity, supervisor, [gen_saga_pool_sup]},
-    Procs = [GenSagaPoolSup],
+
+    GenSagaPoolOrganiser = {gen_saga_pool_organiser, {gen_saga_pool_organiser, start_link, []},
+                    {permanent, 30}, 2000, worker, [gen_saga_pool_organiser]},
+
+    Procs = [GenSagaPoolSup, GenSagaPoolOrganiser],
     {ok, {{one_for_one, 1, 5}, Procs}}.
 
 post_init([]) -> ignore.

@@ -5,7 +5,8 @@
   {mod, {gen_saga_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    lager
    ]},
   {env,[]},
   {modules, []},
