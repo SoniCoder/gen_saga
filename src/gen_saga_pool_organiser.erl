@@ -79,7 +79,8 @@ handle_event(_EventType, {start_workers}, _StateName, _StateData) ->
         fun(WorkerId) ->
             gen_saga_pool_sup:start_child(WorkerId)
         end,
-    get_all_worker_ids());
+    get_all_worker_ids()),
+    keep_state_and_data;
 
 handle_event(EventType, Event, StateName, _StateData) ->
     lager:info("Unhandled event: ~p of type: ~p received in state: ~p", [Event, EventType, StateName]),
